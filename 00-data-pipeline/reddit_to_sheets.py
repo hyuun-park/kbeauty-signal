@@ -21,16 +21,61 @@ from google.oauth2.service_account import Credentials
 SPREADSHEET_ID = "1sCzfdGTJg7C-vn6s8sKOXi4sikIzobKFunF0LtXPkYk"
 SHEET_TAB_NAME = "1_Raw_Reviews"
 
-TARGET_SUBREDDITS = ["AsianBeauty", "SkincareAddiction", "kbeauty"]
+TARGET_SUBREDDITS = ["AsianBeauty", "SkincareAddiction", "kbeauty", "30PlusSkinCare"]
 SEARCH_QUERY = "cream OR serum OR moisturizer"
 
 COMPLAINT_KEYWORDS = [
-    "heavy", "sticky", "greasy", "pilling", "broke me out",
-    "not worth", "too thick", "clogs pores", "white cast",
-    "doesn't absorb", "not absorbing", "flashback", "milia",
-    "allergic", "irritated", "burned", "stings",
-    "not effective", "disappointed", "waste", "overrated",
-    "too oily", "breaks me out", "purging", "redness",
+    # 무겁고 기름진 텍스처
+    "sticky", "greasy", "heavy", "too heavy", "thick", "too thick",
+    "oily", "too oily", "shiny", "too shiny", "suffocating",
+    "feels suffocating", "coated", "film-like", "sits on skin",
+    "doesn't absorb", "not absorbing", "midday shine",
+    "gets greasy later", "sticky after a few hours",
+    "hydrating but heavy", "too greasy under makeup",
+    "good for winter only", "too rich for daytime",
+    # 민감/장벽 손상
+    "reactive skin", "damaged barrier", "skin barrier",
+    "over exfoliated", "raw skin", "sensitive now",
+    "skin freaked out", "redness", "irritated", "stings",
+    "burned", "allergic", "inflamed", "tight skin",
+    "compromised barrier", "nothing works anymore",
+    "trying to repair my barrier", "my skin became sensitive",
+    "my skin is angry", "skin needs a reset",
+    # 루틴 피로
+    "overwhelmed", "too many steps", "routine fatigue",
+    "minimal routine", "simplified my routine", "less is more",
+    "skin cycling", "tired of layering", "skincare exhaustion",
+    "i just want something simple", "my routine got out of control",
+    "i quit using actives", "i need fewer products",
+    # 기후/날씨
+    "humid weather", "florida humidity", "summer skincare",
+    "hot climate", "sweaty", "melts off", "too shiny in humidity",
+    "works in winter but not summer", "too heavy for humid weather",
+    "melts off during the day", "humid climate skincare",
+    # 메이크업 궁합
+    "makeup pills", "pilling", "layers badly", "separates foundation",
+    "balls up", "doesn't layer well",
+    "looks good alone but pills under makeup",
+    "foundation separates after sunscreen",
+    # 트러블
+    "broke me out", "breaks me out", "clogs pores", "clogging",
+    "milia", "purging", "forehead breakout", "fungal acne",
+    "fa safe", "hydrating but clogs pores", "caused bumps",
+    # 효과 없음
+    "not effective", "disappointed", "overrated", "waste of money",
+    "not worth it", "doesn't last", "too watery",
+    "evaporates quickly", "light but ineffective",
+    "felt nice but did nothing", "hydrating at first but disappears quickly",
+    # 스킨케어 불안
+    "skin anxiety", "afraid to try", "confused skin", "frustrated",
+    "gave up on skincare", "my skin reacts to everything",
+    "scared to try new products",
+    # 소비자가 원하는 것 (긍정 신호)
+    "breathable", "weightless", "comfortable", "calming", "soothing",
+    "melts into skin", "healthy skin", "skin feels balanced",
+    "lightweight hydration", "comfortable glow", "non greasy hydration",
+    "cloud-like", "milky", "silky", "bouncy", "velvety", "cushiony",
+    "watery gel", "elegant glow", "soft matte", "skin-like finish",
 ]
 
 K_BEAUTY_BRANDS = [
@@ -78,13 +123,7 @@ def epoch_to_date(ts):
     return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
 
 def fetch_json(url):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive",
-    }
+    headers = {"User-Agent": "Mozilla/5.0 kbeauty-signal-collector/1.0"}
     req = Request(url, headers=headers)
     with urlopen(req, timeout=15) as res:
         return json.loads(res.read().decode("utf-8"))
@@ -153,14 +192,18 @@ def collect():
 # ──────────────────────────────────────────────
 # Google Sheets 업데이트
 # ──────────────────────────────────────────────
-def update_sheets(rows):
-    # GitHub Actions에서는 환경변수로 서비스 계정 JSON 주입
-    creds_json = os.environ.get("GOOGLE_CREDENTIALS")
-    if not creds_json:
-        print("GOOGLE_CREDENTIALS 환경변수가 없습니다.")
-        sys.exit(1)
+CREDENTIALS_FILE = r"C:\Users\user\Downloads\kbeauty-signal-bc98d3cc8902.json"
 
-    creds_dict = json.loads(creds_json)
+def update_sheets(rows):
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS")
+    if creds_json:
+        creds_dict = json.loads(creds_json)
+    elif os.path.exists(CREDENTIALS_FILE):
+        with open(CREDENTIALS_FILE, encoding="utf-8") as f:
+            creds_dict = json.load(f)
+    else:
+        print("인증 파일을 찾을 수 없습니다.")
+        sys.exit(1)
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive",
