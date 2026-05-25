@@ -78,7 +78,13 @@ def epoch_to_date(ts):
     return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
 
 def fetch_json(url):
-    headers = {"User-Agent": "Mozilla/5.0 kbeauty-signal-collector/1.0"}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+    }
     req = Request(url, headers=headers)
     with urlopen(req, timeout=15) as res:
         return json.loads(res.read().decode("utf-8"))
